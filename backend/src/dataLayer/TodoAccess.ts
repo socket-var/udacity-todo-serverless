@@ -15,7 +15,10 @@ export class TodoAccess {
   constructor(
     private readonly docClient: DocumentClient = createDynamoDBClient(),
     private readonly todoItemsTable = process.env.TODO_ITEMS_TABLE,
-    private readonly userIdIndex = process.env.USER_ID_INDEX
+    private readonly userIdIndex = process.env.USER_ID_INDEX,
+    private readonly s3 = new XAWS.S3({ signatureVersion: "v4" }),
+    private readonly bucketName = process.env.IMAGES_S3_BUCKET,
+    private readonly urlExpiration = process.env.SIGNED_URL_EXPIRATION
   ) {}
 
   async getAllTodosByUserId(userId: string): Promise<TodoItem[]> {
@@ -112,6 +115,37 @@ export class TodoAccess {
         })
         .promise();
       return result.Attributes as TodoItem;
+    } else {
+      logger.warn(`${todoId}, ${userId}, ${item}`);
+    }
+  }
+
+  async getUploadUrl(todoId: string, userId: string) {
+    const item = await this.getTodo(todoId, userId);
+
+    if (item) {
+      const { createdAt } = item;
+      const signedUrl = this.s3.getSignedUrl("putObject", {
+        Bucket: this.bucketName,
+        Key: item.todoId,
+        Expires: this.urlExpiration,
+      });
+
+      const result = await this.docClient
+        .update({
+          TableName: this.todoItemsTable,
+          Key: { todoId, createdAt },
+          UpdateExpression: "set attachmentUrl=:URL",
+          ExpressionAttributeValues: {
+            ":URL": signedUrl.split("?")[0],
+          },
+          ReturnValues: "UPDATED_NEW",
+        })
+        .promise();
+
+      logger.info(result.Attributes);
+
+      return signedUrl;
     } else {
       logger.warn(`${todoId}, ${userId}, ${item}`);
     }

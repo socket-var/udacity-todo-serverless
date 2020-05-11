@@ -38,3 +38,10 @@ export async function updateTodo(
 export async function deleteTodo(todoId: string, userId: string) {
   await todoAccess.deleteTodo(todoId, userId);
 }
+
+export async function getImageUrl(
+  todoId: string,
+  userId: string
+): Promise<string> {
+  return todoAccess.getUploadUrl(todoId, userId);
+}

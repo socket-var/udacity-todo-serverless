@@ -156,6 +156,9 @@ functions:
       - Effect: Allow
         Action:
           - dynamodb:Query
+          - dynamodb:GetItem
+          - dynamodb:UpdateItem
+          - dynamodb:PutItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODO_ITEMS_TABLE}
 
 resources:
