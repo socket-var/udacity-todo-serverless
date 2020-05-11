@@ -1,10 +1,40 @@
-import 'source-map-support/register'
+import "source-map-support/register";
 
-import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
-export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  const todoId = event.pathParameters.todoId
+import { deleteTodo } from "../../businessLogic/todos";
+import { getUserId } from "../utils";
+import { createLogger } from "../../utils/logger";
+import * as middy from "middy";
+import { cors } from "middy/middlewares";
 
-  // TODO: Remove a TODO item by id
-  return undefined
-}
+const logger = createLogger("delete-todo");
+
+export const handler = middy(
+  async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    const todoId = event.pathParameters.todoId;
+    const userId = getUserId(event);
+
+    try {
+      // TODO: Remove a TODO item by id
+      await deleteTodo(todoId, userId);
+      return {
+        statusCode: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Credentials": true,
+        },
+        body: JSON.stringify({}),
+      };
+    } catch (e) {
+      logger.error(`delete todo error ${e.message}`);
+
+      return {
+        statusCode: 500,
+        body: JSON.stringify({}),
+      };
+    }
+  }
+);
+
+handler.use(cors({ credentials: true }));
